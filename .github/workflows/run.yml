@@ -1,0 +1,37 @@
+name: Run Python Data Script Monthly
+
+on:
+  schedule:
+    - cron: "0 12 26 * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    
+    env:
+      DB1_HOST: ${{ secrets.DB1_HOST }}
+      DB1_NAME: ${{ secrets.DB1_NAME }} 
+      DB1_USER: ${{ secrets.DB1_USER }} 
+      DB1_PASS: ${{ secrets.DB1_PASS }}
+      DB1_PORT: ${{ secrets.DB1_PORT }}
+      DB2_HOST: ${{ secrets.DB2_HOST }}
+      DB2_NAME: ${{ secrets.DB2_NAME }}
+      DB2_USER: ${{ secrets.DB2_USER }}
+      DB2_PASS: ${{ secrets.DB2_PASS }}
+      DB2_PORT: ${{ secrets.DB2_PORT }}
+
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        
+      - name: Run script
+        run: python rpa_banco.py
