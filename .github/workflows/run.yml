@@ -20,6 +20,7 @@ jobs:
       DB2_USER: ${{ secrets.DB2_USER }}
       DB2_PASS: ${{ secrets.DB2_PASS }}
       DB2_PORT: ${{ secrets.DB2_PORT }}
+      SYNC_TABLES: ${{ secrets.SYNC_TABLES }}
 
       
     steps:
