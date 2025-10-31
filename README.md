@@ -123,9 +123,10 @@ db1_port = os.getenv("DB1_PORT")
 print(f"INFO: Tentando conectar DB1 (DESTINO): Host={db1_host}, DB={db1_name}, User={db1_user}, Port={db1_port}")
 conn_1 = psycopg2.connect(
     host=db1_host, database=db1_name, user=db1_user, password=db1_pass, port=db1_port
-    )
+)
 print("INFO: Conexão DB1 (DESTINO) estabelecida com sucesso.")
 
+# DB2 (ORIGEM)
 db2_host = os.getenv("DB2_HOST")
 db2_name = os.getenv("DB2_NAME")
 db2_user = os.getenv("DB2_USER")
@@ -135,7 +136,7 @@ db2_port = os.getenv("DB2_PORT")
 print(f"INFO: Tentando conectar DB2 (ORIGEM): Host={db2_host}, DB={db2_name}, User={db2_user}, Port={db2_port}")
 conn_2 = psycopg2.connect(
     host=db2_host, database=db2_name, user=db2_user, password=db2_pass, port=db2_port
-    )
+)
 print("INFO: Conexão DB2 (ORIGEM) estabelecida com sucesso.")
 
 sync_tables_raw = os.getenv("SYNC_TABLES")
@@ -147,26 +148,35 @@ print(f"INFO: Tabelas configuradas para sincronização: {sync_tables}")
 
 print("-" * 50)
 try:
-
     hashes_db2_origem = _get_db_hashes(conn_2, sync_tables)
     hashes_db1_destino = _get_db_hashes(conn_1, sync_tables)
 
     for table, hash2_origem in hashes_db2_origem.items():
         hash1_destino = hashes_db1_destino.get(table)
-        print(f"\nINFO: Tabela '{table}': Hash ORIGEM (DB2)={hash2_origem}, Hash DESTINO (DB1)={hash1_destino}")
+        print(f"\nINFO: Tabela '{table}': Hash ORIGEM={hash2_origem}, Hash DESTINO={hash1_destino}")
         
         if hash2_origem != hash1_destino:
             print(f"INFO: Tabela {table} está diferente, sincronizando...")
-            
-            data, columns = _get_data(conn_2, f"SELECT * FROM {table}", table)
-            
+
+            cols_db2 = _get_columns(conn_2, table)
+            cols_db1 = _get_columns(conn_1, table)
+            colunas_comuns = [col for col in cols_db2 if col in cols_db1]
+
+            if not colunas_comuns:
+                print(f"AVISO: Nenhuma coluna em comum na tabela {table}, ignorando.")
+                continue
+
+            print(f"DEBUG: Colunas em comum para {table}: {colunas_comuns}")
+
+            data, columns = _get_data(conn_2, f"SELECT {', '.join(colunas_comuns)} FROM {table}", table)
+
             if data:
-                _insert_data(conn_1, data, table, columns)
-                print(f"SUCESSO: Tabela {table} sincronizada com {len(data)} linhas no DB1 (DESTINO)!")
+                _insert_data(conn_1, data, table, colunas_comuns)
+                print(f"SUCESSO: Tabela {table} sincronizada ({len(data)} linhas).")
             else:
-                print(f"AVISO: Tabela {table} **VAZIA** no banco de origem (DB2). Nenhuma sincronização feita.")
+                print(f"AVISO: Tabela {table} vazia no DB2.")
         else:
-            print(f"INFO: Tabela {table} já está atualizada no DESTINO. Hash é o mesmo.")
+            print(f"INFO: Tabela {table} já está atualizada.")
 finally:
     print("-" * 50)
     print("INFO: Fechando conexões.")
